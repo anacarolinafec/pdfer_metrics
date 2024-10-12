@@ -23,12 +23,11 @@ services:
 
   cadvisor:
     image: gcr.io/cadvisor/cadvisor:v0.47.2
+    container_name: cadvisor
     volumes:
-      - /:/rootfs:ro
-      - /var/run:/var/run:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
       - /sys:/sys:ro
       - /var/lib/docker/:/var/lib/docker:ro
-      - /dev/disk/:/dev/disk:ro
     ports:
       - "8080:8080"
     depends_on:
@@ -36,6 +35,7 @@ services:
 
   prometheus:
     image: prom/prometheus
+    container_name: prometheus
     volumes: # interligar o pc aos ficheiros do docker
       - ./prometheus.yml:/etc/prometheus/prometheus.yml:ro
       #pc                 docker(imagem)
@@ -48,6 +48,7 @@ services:
   
   client: 
    image: python:3.9
+   container_name: client
    volumes: 
     - ./client.py:/app/client.py
    working_dir: /app
