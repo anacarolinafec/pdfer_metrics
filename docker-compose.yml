@@ -20,6 +20,12 @@ services:
     volumes:
       - ./pdfer.go:/app/pdfer.go
       - ./store:/app/store  # Optional: maps the local directory to the container
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/metrics"]
+      interval: 5s   # Time between each health check
+      timeout: 45s    # Timeout for each health check
+      retries: 3      # Number of retries before marking the container as unhealthy
+      start_period: 10s  # Initial delay before starting health checks
 
   cadvisor:
     image: gcr.io/cadvisor/cadvisor:latest
@@ -45,7 +51,8 @@ services:
       - --disable_metrics=hugetlb
     privileged: true
     depends_on:
-      - pdfer
+      pdfer:
+        condition: service_healthy
 
   prometheus:
     image: prom/prometheus
@@ -70,7 +77,8 @@ services:
    ports:
     - "8000:8000"
    depends_on:
-    - pdfer
+    pdfer:
+        condition: service_healthy
 
   grafana:
     image: grafana/grafana:latest  # Imagem do Grafana
