@@ -3,7 +3,6 @@ import time
 import threading
 import random
 import string
-import os
 from prometheus_client import start_http_server, Summary, Counter, Gauge
 
 # Definir métricas para a latência do GET e POST
@@ -123,7 +122,7 @@ def client_thread():
             print("Fazendo pedido GET para recuperar arquivo...")
             make_get_file_request(file_name, key)
 
-            time.sleep(10)  # Espera 10 segundos antes de fazer novos pedidos
+            time.sleep(3)  # Espera 1 segundo antes de fazer novos pedidos (adaptado para o intervalo de 1 segundo)
     finally:
         ACTIVE_CLIENTS.dec()  # Decrementa o número de clientes ativos quando o thread termina
 
@@ -132,7 +131,7 @@ if __name__ == '__main__':
     start_http_server(8000)
 
     # Interface do usuário para configurar a execução
-    num_clients = 5# Padrão para 1 se não estiver definido
+    num_clients = 5
 
     # Cria e inicia as threads de clientes
     threads = []

@@ -10,6 +10,7 @@ import (
 	"io/ioutil"
 	"net/http"
 	"os"
+	"sync"
 	"time"
 
 	"github.com/gorilla/mux"
@@ -75,6 +76,11 @@ var (
 		Name: "active_encryptions",
 		Help: "Quantidade de encriptações ativas.",
 	})
+)
+
+var (
+	clientReadTimes = make(map[string]time.Time)
+	mu              sync.Mutex
 )
 
 func init() {
@@ -168,10 +174,22 @@ func decrypt(encryptedData string, key string) (string, error) {
 	return fmt.Sprintf("%s", string(data)), nil
 }
 
+func isClientReadRecently(clientID string, interval time.Duration) bool {
+	mu.Lock()
+	defer mu.Unlock()
+
+	lastReadTime, exists := clientReadTimes[clientID]
+	if !exists || time.Since(lastReadTime) > interval {
+		clientReadTimes[clientID] = time.Now()
+		return false
+	}
+	return true
+}
+
 func filesRoute(w http.ResponseWriter, r *http.Request) {
-	activeConnections.Inc() // Incrementa conexões ativas no início da requisição
-	defer activeConnections.Dec() // Garante que as conexões ativas são decrementadas no final da requisição
-	activeHttpRequests.Inc() // Incrementa pedidos HTTP ativos
+	activeConnections.Inc()        // Incrementa conexões ativas no início da requisição
+	defer activeConnections.Dec()  // Garante que as conexões ativas são decrementadas no final da requisição
+	activeHttpRequests.Inc()       // Incrementa pedidos HTTP ativos
 	defer activeHttpRequests.Dec() // Garante que são decrementados no final
 
 	totalStart := time.Now() // Métrica total para o request
@@ -191,6 +209,9 @@ func filesRoute(w http.ResponseWriter, r *http.Request) {
 
 		start := time.Now()
 		for _, f := range fs {
+			if isClientReadRecently(f.Name(), time.Second) {
+				continue // Evitar leituras duplicadas
+			}
 			getFilesResponseModel.Files = append(getFilesResponseModel.Files, f.Name())
 		}
 		duration := time.Since(start).Seconds()
@@ -271,9 +292,9 @@ func filesRoute(w http.ResponseWriter, r *http.Request) {
 }
 
 func fileRoute(w http.ResponseWriter, r *http.Request) {
-	activeConnections.Inc() // Incrementa conexões ativas no início da requisição
-	defer activeConnections.Dec() // Garante que as conexões ativas são decrementadas no final da requisição
-	activeHttpRequests.Inc() // Incrementa pedidos HTTP ativos
+	activeConnections.Inc()        // Incrementa conexões ativas no início da requisição
+	defer activeConnections.Dec()  // Garante que as conexões ativas são decrementadas no final da requisição
+	activeHttpRequests.Inc()       // Incrementa pedidos HTTP ativos
 	defer activeHttpRequests.Dec() // Garante que são decrementados no final
 
 	totalStart := time.Now() // Métrica total para o request

@@ -22,14 +22,28 @@ services:
       - ./store:/app/store  # Optional: maps the local directory to the container
 
   cadvisor:
-    image: gcr.io/cadvisor/cadvisor:v0.47.2
+    image: gcr.io/cadvisor/cadvisor:latest
     container_name: cadvisor
     volumes:
-      - /var/run/docker.sock:/var/run/docker.sock:ro
-      - /sys:/sys:ro
-      - /var/lib/docker/:/var/lib/docker:ro
+    # https://github.com/vacp2p/wakurtosis/issues/58 for cadvisor issues with wsl2
+    # First: sudo mkdir /mnt/windows_docker
+    # Second: sudo mount -t drvfs '\\wsl$\docker-desktop-data\data\docker' /mnt/windows_docker
+      - '/:/rootfs:ro'
+      - '/var/run:/var/run:rw'
+      - '/sys:/sys:ro'
+      - '/var/lib/docker/:/var/lib/docker:ro'
+      - '/dev/disk/:/dev/disk:ro'
+      - '/etc/machine-id:/etc/machine-id:ro'
+      - '/mnt/windows_docker/:/rootfs/var/lib/docker:ro'
     ports:
       - "8080:8080"
+    devices:
+      - /dev/kmsg:/dev/kmsg
+    command:  
+      - --docker_only=true
+      - --disable_root_cgroup_stats=true
+      - --disable_metrics=hugetlb
+    privileged: true
     depends_on:
       - pdfer
 

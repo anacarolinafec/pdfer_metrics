@@ -65,7 +65,7 @@
       "datasource": {
         "default": true,
         "type": "prometheus",
-        "uid": "ee0d0nizkxpmoc"
+        "uid": "be0nll798v9xce"
       },
       "fieldConfig": {
         "defaults": {
@@ -152,8 +152,8 @@
             "uid": "ee0d0nizkxpmoc"
           },
           "disableTextWrap": false,
-          "editorMode": "builder",
-          "expr": "avg(container_memory_usage_bytes{instance=\"cadvisor\"})",
+          "editorMode": "code",
+          "expr": "avg(container_memory_usage_bytes{name=\"pdfer\"})",
           "fullMetaSearch": false,
           "includeNullMetadata": true,
           "instant": false,
@@ -171,7 +171,7 @@
       "datasource": {
         "default": true,
         "type": "prometheus",
-        "uid": "ee0d0nizkxpmoc"
+        "uid": "be0nll798v9xce"
       },
       "fieldConfig": {
         "defaults": {
@@ -256,7 +256,7 @@
           },
           "disableTextWrap": false,
           "editorMode": "code",
-          "expr": "rate(container_cpu_usage_seconds_total{id=\"/docker\"}[1m]) * 100",
+          "expr": "rate(container_cpu_usage_seconds_total{name=\"pdfer\"}[1m]) * 100",
           "fullMetaSearch": false,
           "includeNullMetadata": true,
           "instant": false,
@@ -287,7 +287,7 @@
       "datasource": {
         "default": true,
         "type": "prometheus",
-        "uid": "ee0d0nizkxpmoc"
+        "uid": "be0nll798v9xce"
       },
       "description": "contador que mede o tempo total, em segundos, gasto em operações de criptografia realizadas",
       "fieldConfig": {
@@ -392,7 +392,7 @@
       "datasource": {
         "default": true,
         "type": "prometheus",
-        "uid": "ee0d0nizkxpmoc"
+        "uid": "be0nll798v9xce"
       },
       "fieldConfig": {
         "defaults": {
@@ -508,7 +508,7 @@
       "datasource": {
         "default": true,
         "type": "prometheus",
-        "uid": "ee0d0nizkxpmoc"
+        "uid": "be0nll798v9xce"
       },
       "description": "calcula o número de ficheiros criados ao longo de um determinado intervalo de tempo. Neste caso, está medindo o aumento total do contador files_created_total nos últimos 5 minutos.",
       "fieldConfig": {
@@ -582,7 +582,7 @@
       "datasource": {
         "default": true,
         "type": "prometheus",
-        "uid": "ee0d0nizkxpmoc"
+        "uid": "be0nll798v9xce"
       },
       "fieldConfig": {
         "defaults": {
@@ -668,7 +668,7 @@
       "datasource": {
         "default": true,
         "type": "prometheus",
-        "uid": "ee0d0nizkxpmoc"
+        "uid": "be0nll798v9xce"
       },
       "description": "",
       "fieldConfig": {
@@ -723,7 +723,7 @@
             "uid": "ee0d0nizkxpmoc"
           },
           "disableTextWrap": false,
-          "editorMode": "builder",
+          "editorMode": "code",
           "expr": "active_clients{job=\"client\"}",
           "fullMetaSearch": false,
           "hide": false,
@@ -743,7 +743,7 @@
       "datasource": {
         "default": true,
         "type": "prometheus",
-        "uid": "ee0d0nizkxpmoc"
+        "uid": "be0nll798v9xce"
       },
       "fieldConfig": {
         "defaults": {
@@ -831,7 +831,7 @@
       "datasource": {
         "default": true,
         "type": "prometheus",
-        "uid": "ee0d0nizkxpmoc"
+        "uid": "be0nll798v9xce"
       },
       "fieldConfig": {
         "defaults": {
@@ -876,7 +876,8 @@
             "mode": "absolute",
             "steps": [
               {
-                "color": "green"
+                "color": "green",
+                "value": null
               },
               {
                 "color": "red",
@@ -933,7 +934,7 @@
       "datasource": {
         "default": true,
         "type": "prometheus",
-        "uid": "ee0d0nizkxpmoc"
+        "uid": "be0nll798v9xce"
       },
       "fieldConfig": {
         "defaults": {
@@ -978,7 +979,8 @@
             "mode": "absolute",
             "steps": [
               {
-                "color": "green"
+                "color": "green",
+                "value": null
               },
               {
                 "color": "red",
@@ -1035,7 +1037,7 @@
       "datasource": {
         "default": true,
         "type": "prometheus",
-        "uid": "ee0d0nizkxpmoc"
+        "uid": "be0nll798v9xce"
       },
       "fieldConfig": {
         "defaults": {
@@ -1080,7 +1082,8 @@
             "mode": "absolute",
             "steps": [
               {
-                "color": "green"
+                "color": "green",
+                "value": null
               },
               {
                 "color": "red",
@@ -1137,7 +1140,7 @@
       "datasource": {
         "default": true,
         "type": "prometheus",
-        "uid": "ee0d0nizkxpmoc"
+        "uid": "be0nll798v9xce"
       },
       "fieldConfig": {
         "defaults": {
@@ -1146,7 +1149,8 @@
             "mode": "absolute",
             "steps": [
               {
-                "color": "green"
+                "color": "green",
+                "value": null
               },
               {
                 "color": "red",
@@ -1159,8 +1163,8 @@
         "overrides": []
       },
       "gridPos": {
-        "h": 6,
-        "w": 2,
+        "h": 5,
+        "w": 5,
         "x": 11,
         "y": 37
       },
@@ -1223,6 +1227,6 @@
   "timezone": "browser",
   "title": "Dashboard Pdfer",
   "uid": "fe0d663l3k5j4a",
-  "version": 67,
+  "version": 3,
   "weekStart": ""
 }
