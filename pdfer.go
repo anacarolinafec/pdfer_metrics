@@ -10,7 +10,6 @@ import (
 	"io/ioutil"
 	"net/http"
 	"os"
-	"sync"
 	"time"
 
 	"github.com/gorilla/mux"
@@ -72,19 +71,10 @@ var (
 		Name: "active_http_requests",
 		Help: "Quantidade de métodos HTTP ativos.",
 	})
-	totalHttpRequests=prometheus.NewGauge(prometheus.GaugeOpts{
-		Name: "total_http_requests",
-		Help: "Quantidade total de pedidos HTTP feitos.",
-	})
 	activeEncryptions = prometheus.NewGauge(prometheus.GaugeOpts{
 		Name: "active_encryptions",
 		Help: "Quantidade de encriptações ativas.",
 	})
-)
-
-var (
-	clientReadTimes = make(map[string]time.Time)
-	mu              sync.Mutex
 )
 
 func init() {
@@ -102,7 +92,6 @@ func init() {
 	prometheus.MustRegister(filesStored)
 	prometheus.MustRegister(httpErrors)
 	prometheus.MustRegister(activeHttpRequests)
-	prometheus.MustRegister(totalHttpRequests)
 	prometheus.MustRegister(activeEncryptions)
 }
 
@@ -179,19 +168,12 @@ func decrypt(encryptedData string, key string) (string, error) {
 	return fmt.Sprintf("%s", string(data)), nil
 }
 
-func isClientReadRecently(clientID string, interval time.Duration) bool {
-	mu.Lock()
-	defer mu.Unlock()
-
-	lastReadTime, exists := clientReadTimes[clientID]
-	if !exists || time.Since(lastReadTime) > interval {
-		clientReadTimes[clientID] = time.Now()
-		return false
-	}
-	return true
-}
-
 func filesRoute(w http.ResponseWriter, r *http.Request) {
+	activeConnections.Inc()        // Incrementa conexões ativas no início da requisição
+	defer activeConnections.Dec()  // Garante que as conexões ativas são decrementadas no final da requisição
+	activeHttpRequests.Inc()       // Incrementa pedidos HTTP ativos
+	defer activeHttpRequests.Dec() // Garante que são decrementados no final
+
 	totalStart := time.Now() // Métrica total para o request
 	fs, err := ioutil.ReadDir("store")
 	if err != nil {
@@ -209,9 +191,6 @@ func filesRoute(w http.ResponseWriter, r *http.Request) {
 
 		start := time.Now()
 		for _, f := range fs {
-			if isClientReadRecently(f.Name(), time.Second) {
-				continue // Evitar leituras duplicadas
-			}
 			getFilesResponseModel.Files = append(getFilesResponseModel.Files, f.Name())
 		}
 		duration := time.Since(start).Seconds()
@@ -292,6 +271,11 @@ func filesRoute(w http.ResponseWriter, r *http.Request) {
 }
 
 func fileRoute(w http.ResponseWriter, r *http.Request) {
+	activeConnections.Inc()        // Incrementa conexões ativas no início da requisição
+	defer activeConnections.Dec()  // Garante que as conexões ativas são decrementadas no final da requisição
+	activeHttpRequests.Inc()       // Incrementa pedidos HTTP ativos
+	defer activeHttpRequests.Dec() // Garante que são decrementados no final
+
 	totalStart := time.Now() // Métrica total para o request
 	_, err := ioutil.ReadDir("store")
 	if err != nil {
@@ -373,35 +357,10 @@ func fileRoute(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// MetricsMiddleware is a middleware that collects metrics for each request.
-func MetricsMiddleware(next http.Handler) http.Handler {
-    return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		activeConnections.Inc()        // Incrementa conexões ativas no início da requisição
-		defer activeConnections.Dec()  // Garante que as conexões ativas são decrementadas no final da requisição
-		activeHttpRequests.Inc()       // Incrementa pedidos HTTP ativos
-		defer activeHttpRequests.Dec()
-		totalHttpRequests.Inc() // Garante que são decrementados no final
-
-        // Start the timer to measure total request duration
-        //start := time.Now()
-
-        // Execute the next handler in the chain
-        next.ServeHTTP(w, r)
-
-        // Record the total request duration once the handler has finished
-        //duration := time.Since(start).Seconds()
-        //totalRequestDuration.Observe(duration)
-    })
-}
-
 func main() {
 	r := mux.NewRouter()
-
-	r.Use(MetricsMiddleware)
-
-    // Define your routes
-    r.HandleFunc("/files", filesRoute)
-    r.HandleFunc("/files/{fileId}", fileRoute)
+	r.HandleFunc("/files", filesRoute)
+	r.HandleFunc("/files/{fileId}", fileRoute)
 
 	// Rota para expor métricas do Prometheus
 	r.Handle("/metrics", promhttp.Handler())
