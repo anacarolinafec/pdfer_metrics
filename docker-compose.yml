@@ -1,27 +1,46 @@
 version: '3.7'
+# da setup de tudo enves de correr varios comandos. Sem ele teria de fazer docker build para cada dependencia (prometheus, ...)
 
 services:
+
   pdfer:
-    image: golang:1.20
+    build:
+      context: .
+      dockerfile: dockerfile.yml
     container_name: pdfer
-    working_dir: /app
-    command: >
-      sh -c "
-      go get -d -v &&
-      go build -v pdfer.go &&
-      ./pdfer
-      "
     ports:
       - "8081:8080"
     volumes:
-      - ./pdfer.go:/app/pdfer.go
-      - ./go.mod:/app/go.mod
-      - nas_store:/app/store
+      - nas_store:/app/store  # Usa o volume NAS para armazenar ficheiros
+
+    #image: golang:1.20  # Use an appropriate Go version
+    #container_name: pdfer
+    #working_dir: /app 
+    # uma vez que o fich go tem dependencias, tenho de criar um projeto para depois conseguir instalar as dependencias necessarias
+    #command: >
+    #  sh -c "
+    #  go mod init pdfer && 
+    #  go mod tidy &&
+    #  go build -o pdfer &&
+    #  ./pdfer
+    #  " 
+    #ports:
+    #  - "8081:8080"
+    #volumes:
+    #  - ./pdfer.go:/app/pdfer.go
+    #  - ./go.mod:/app/go.mod
+    #  - ./go.sum:/app/go.sum
+      #- ./store:/app/store  # Optional: maps the local directory to the container
+    #  - nas_store:/app/store  # Usa o volume NAS para armazenar ficheiros
+    
 
   cadvisor:
     image: gcr.io/cadvisor/cadvisor:latest
     container_name: cadvisor
     volumes:
+    # https://github.com/vacp2p/wakurtosis/issues/58 for cadvisor issues with wsl2
+    # First: sudo mkdir /mnt/windows_docker
+    # Second: sudo mount -t drvfs '\\wsl$\docker-desktop-data\data\docker' /mnt/windows_docker
       - '/:/rootfs:ro'
       - '/var/run:/var/run:rw'
       - '/sys:/sys:ro'
@@ -38,12 +57,15 @@ services:
       - --disable_root_cgroup_stats=true
       - --disable_metrics=hugetlb
     privileged: true
+    depends_on:
+      - pdfer
 
   prometheus:
     image: prom/prometheus
     container_name: prometheus
-    volumes:
+    volumes: # interligar o pc aos ficheiros do docker
       - ./prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      #pc                 docker(imagem)
     command:
       - --config.file=/etc/prometheus/prometheus.yml
     ports:
@@ -60,21 +82,27 @@ services:
     command: sh -c "pip install prometheus_client requests && python client.py" 
     ports:
       - "8000:8000"
+    depends_on:
+      - pdfer 
 
   grafana:
-    image: grafana/grafana:latest
-    container_name: grafana
+    image: grafana/grafana:latest  # Imagem do Grafana
+    container_name: grafana  # Nome do contêiner do Grafana
     ports:
-      - 3000:3000
+      - 3000:3000  # Porta do Grafana para o host
     volumes:
-      - grafana-data:/var/lib/grafana
+      - grafana-data:/var/lib/grafana  # Diretório de dados persistente do Grafana
     depends_on:
       - prometheus
     environment:
-      - GF_SECURITY_ADMIN_PASSWORD=admin
-      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=admin  # Palavra-passe do administrador do Grafana
+      - GF_SECURITY_ADMIN_USER=admin  # Nome de utilizador do administrador do Grafana
 
 volumes:
-  grafana-data:
-  nas_store:
-    external: true  # Indica que o volume é criado externamente
+  grafana-data:  # Volume persistente para os dados do Grafana
+  nas_store:  # Volume para conexão ao XigmaNAS
+    driver: local
+    driver_opts:
+      type: cifs
+      o: username=carolina,password=xigmanas,vers=3.0,file_mode=0777,dir_mode=0777
+      device: //192.168.1.250/smb01
