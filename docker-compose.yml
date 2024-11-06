@@ -4,19 +4,19 @@ services:
   pdfer:
     image: golang:1.20
     container_name: pdfer
-    working_dir: /app 
+    working_dir: /app
     command: >
       sh -c "
-      go mod init pdfer && 
-      go mod tidy &&
-      go build -o pdfer &&
+      go get -d -v &&
+      go build -v pdfer.go &&
       ./pdfer
-      " 
+      "
     ports:
       - "8081:8080"
     volumes:
       - ./pdfer.go:/app/pdfer.go
-      - nas_store:/app/store  # Modificado para usar o volume do XigmaNAS
+      - ./go.mod:/app/go.mod
+      - nas_store:/app/store
 
   cadvisor:
     image: gcr.io/cadvisor/cadvisor:latest

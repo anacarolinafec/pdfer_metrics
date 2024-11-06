@@ -131,7 +131,7 @@ if __name__ == '__main__':
     start_http_server(8000)
 
     # Interface do usuário para configurar a execução
-    num_clients = 5
+    num_clients = 1000
 
     # Cria e inicia as threads de clientes
     threads = []
