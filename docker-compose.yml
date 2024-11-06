@@ -1,13 +1,10 @@
 version: '3.7'
-# da setup de tudo enves de correr varios comandos. Sem ele teria de fazer docker build para cada dependencia (prometheus, ...)
 
 services:
-
   pdfer:
-    image: golang:1.20  # Use an appropriate Go version
+    image: golang:1.20
     container_name: pdfer
     working_dir: /app 
-    # uma vez que o fich go tem dependencias, tenho de criar um projeto para depois conseguir instalar as dependencias necessarias
     command: >
       sh -c "
       go mod init pdfer && 
@@ -19,21 +16,12 @@ services:
       - "8081:8080"
     volumes:
       - ./pdfer.go:/app/pdfer.go
-      - ./store:/app/store  # Optional: maps the local directory to the container
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8080/metrics"]
-      interval: 5s   # Time between each health check
-      timeout: 45s    # Timeout for each health check
-      retries: 3      # Number of retries before marking the container as unhealthy
-      start_period: 10s  # Initial delay before starting health checks
+      - nas_store:/app/store  # Modificado para usar o volume do XigmaNAS
 
   cadvisor:
     image: gcr.io/cadvisor/cadvisor:latest
     container_name: cadvisor
     volumes:
-    # https://github.com/vacp2p/wakurtosis/issues/58 for cadvisor issues with wsl2
-    # First: sudo mkdir /mnt/windows_docker
-    # Second: sudo mount -t drvfs '\\wsl$\docker-desktop-data\data\docker' /mnt/windows_docker
       - '/:/rootfs:ro'
       - '/var/run:/var/run:rw'
       - '/sys:/sys:ro'
@@ -50,16 +38,12 @@ services:
       - --disable_root_cgroup_stats=true
       - --disable_metrics=hugetlb
     privileged: true
-    depends_on:
-      pdfer:
-        condition: service_healthy
 
   prometheus:
     image: prom/prometheus
     container_name: prometheus
-    volumes: # interligar o pc aos ficheiros do docker
+    volumes:
       - ./prometheus.yml:/etc/prometheus/prometheus.yml:ro
-      #pc                 docker(imagem)
     command:
       - --config.file=/etc/prometheus/prometheus.yml
     ports:
@@ -68,30 +52,29 @@ services:
       - cadvisor
   
   client: 
-   image: python:3.9
-   container_name: client
-   volumes: 
-    - ./client.py:/app/client.py
-   working_dir: /app
-   command: sh -c "pip install prometheus_client requests && python client.py" 
-   ports:
-    - "8000:8000"
-   depends_on:
-    pdfer:
-        condition: service_healthy
+    image: python:3.9
+    container_name: client
+    volumes: 
+      - ./client.py:/app/client.py
+    working_dir: /app
+    command: sh -c "pip install prometheus_client requests && python client.py" 
+    ports:
+      - "8000:8000"
 
   grafana:
-    image: grafana/grafana:latest  # Imagem do Grafana
-    container_name: grafana  # Nome do contêiner do Grafana
+    image: grafana/grafana:latest
+    container_name: grafana
     ports:
-      - 3000:3000  # Porta do Grafana para o host
+      - 3000:3000
     volumes:
-      - grafana-data:/var/lib/grafana  # Diretório de dados persistente do Grafana
+      - grafana-data:/var/lib/grafana
     depends_on:
       - prometheus
     environment:
-      - GF_SECURITY_ADMIN_PASSWORD=admin  # Palavra-passe do administrador do Grafana
-      - GF_SECURITY_ADMIN_USER=admin  # Nome de utilizador do administrador do Grafana
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+      - GF_SECURITY_ADMIN_USER=admin
 
 volumes:
-  grafana-data:  # Volume persistente para os dados do Grafana
+  grafana-data:
+  nas_store:
+    external: true  # Indica que o volume é criado externamente
