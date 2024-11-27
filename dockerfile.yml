@@ -1,0 +1,20 @@
+# Usa a imagem base de Go
+FROM golang:1.20
+
+# Define o diretório de trabalho
+WORKDIR /app
+
+# Copia o ficheiro `go.mod` e `go.sum` para o container
+COPY go.mod go.sum ./
+
+# Faz o download das dependências Go (sem executar o código)
+RUN go mod download
+
+# Copia o código do projeto para o container
+COPY . .
+
+# Compila o projeto
+RUN go build -o pdfer
+
+# Define o comando de entrada para o container
+CMD ["./pdfer"]
