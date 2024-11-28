@@ -11,28 +11,11 @@ services:
     ports:
       - "8081:8080"
     volumes:
-      - nas_store:/app/store  # Usa o volume NAS para armazenar ficheiros
-
-    #image: golang:1.20  # Use an appropriate Go version
-    #container_name: pdfer
-    #working_dir: /app 
-    # uma vez que o fich go tem dependencias, tenho de criar um projeto para depois conseguir instalar as dependencias necessarias
-    #command: >
-    #  sh -c "
-    #  go mod init pdfer && 
-    #  go mod tidy &&
-    #  go build -o pdfer &&
-    #  ./pdfer
-    #  " 
-    #ports:
-    #  - "8081:8080"
-    #volumes:
-    #  - ./pdfer.go:/app/pdfer.go
-    #  - ./go.mod:/app/go.mod
-    #  - ./go.sum:/app/go.sum
-      #- ./store:/app/store  # Optional: maps the local directory to the container
-    #  - nas_store:/app/store  # Usa o volume NAS para armazenar ficheiros
-    
+      - type: volume
+        source: nas_store
+        target: /app/store
+    networks:
+      - backend
 
   cadvisor:
     image: gcr.io/cadvisor/cadvisor:latest
@@ -56,9 +39,12 @@ services:
       - --docker_only=true
       - --disable_root_cgroup_stats=true
       - --disable_metrics=hugetlb
+      - --housekeeping_interval=30s
     privileged: true
     depends_on:
       - pdfer
+    networks:
+      - backend
 
   prometheus:
     image: prom/prometheus
@@ -72,6 +58,8 @@ services:
       - "9090:9090"
     depends_on:
       - cadvisor
+    networks:
+      - backend
   
   client: 
     image: python:3.9
@@ -83,7 +71,9 @@ services:
     ports:
       - "8000:8000"
     depends_on:
-      - pdfer 
+      - pdfer
+    networks:
+      - backend
 
   grafana:
     image: grafana/grafana:latest  # Imagem do Grafana
@@ -97,6 +87,20 @@ services:
     environment:
       - GF_SECURITY_ADMIN_PASSWORD=admin  # Palavra-passe do administrador do Grafana
       - GF_SECURITY_ADMIN_USER=admin  # Nome de utilizador do administrador do Grafana
+    networks:
+      - backend
+
+  # Serviço NGINX - Load Balancer
+  nginx:
+    image: nginx:latest
+    ports:
+       - "80:80"
+    volumes:
+       - ./nginx.conf:/etc/nginx/nginx.conf:ro
+    depends_on:
+       - pdfer
+    networks:
+       - backend
 
 volumes:
   grafana-data:  # Volume persistente para os dados do Grafana
@@ -106,3 +110,7 @@ volumes:
       type: cifs
       o: username=carolina,password=xigmanas,vers=3.0,file_mode=0777,dir_mode=0777
       device: //192.168.1.250/smb01
+
+networks:
+  backend:
+    driver: bridge

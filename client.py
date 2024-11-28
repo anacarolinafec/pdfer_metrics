@@ -18,8 +18,8 @@ GET_FAILURE = Counter('get_request_failure_total', 'Total de requisições GET c
 # Gauge para contar o número de clientes ativos
 ACTIVE_CLIENTS = Gauge('active_clients', 'Número de clientes ativos')
 
-# URL base do servidor
-base_url = "http://pdfer:8080"
+# O client.py enviará os pedidos para o Nginx
+base_url = "http://nginx:80"
 
 # Conjuntos para rastrear chaves e nomes de arquivos
 used_keys = set()
@@ -131,7 +131,7 @@ if __name__ == '__main__':
     start_http_server(8000)
 
     # Interface do usuário para configurar a execução
-    num_clients = 1000
+    num_clients = 2
 
     # Cria e inicia as threads de clientes
     threads = []
