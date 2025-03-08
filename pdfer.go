@@ -202,71 +202,88 @@ func filesRoute(w http.ResponseWriter, r *http.Request) {
 		json.NewEncoder(w).Encode(getFilesResponseModel)
 
 	case "POST":
-		var postFilesRequestModel PostFilesRequestModel
-		err := json.NewDecoder(r.Body).Decode(&postFilesRequestModel)
-		if err != io.EOF && err != nil {
-			fmt.Println("Failed to parse body")
-			httpErrors.Inc()
-			fmt.Println(err.Error())
-			http.Error(w, "Failed to parse body: "+err.Error(), http.StatusBadRequest)
-			return
-		}
+        var postFilesRequestModel PostFilesRequestModel
+        err := json.NewDecoder(r.Body).Decode(&postFilesRequestModel)
+        if err != io.EOF && err != nil {
+            fmt.Println("Failed to parse body")
+            httpErrors.Inc()
+            fmt.Println(err.Error())
+            http.Error(w, "Failed to parse body: "+err.Error(), http.StatusBadRequest)
+            return
+        }
 
-		if len(postFilesRequestModel.Key) != 16 {
-			fmt.Println("Key must be 16 bytes length")
-			httpErrors.Inc()
-			http.Error(w, "Key must be 16 bytes length", http.StatusBadRequest)
-			return
-		}
+        if len(postFilesRequestModel.Key) != 16 {
+            fmt.Println("Key must be 16 bytes length")
+            httpErrors.Inc()
+            http.Error(w, "Key must be 16 bytes length", http.StatusBadRequest)
+            return
+        }
 
-		var postFilesResponseModel PostFilesResponseModel
-		postFilesResponseModel.Metrics.Unit = "microseconds"
+        var postFilesResponseModel PostFilesResponseModel
+        postFilesResponseModel.Metrics.Unit = "microseconds"
 
-		start := time.Now()
-		var fileContent string
-		for i := 0; i < postFilesRequestModel.Length; i++ {
-			fileContent = fileContent + "a"
-		}
-		duration := time.Since(start).Seconds()
-		postFilesResponseModel.Metrics.GenerateFile = int(duration * 1e6)
-		generateFile.Observe(duration)
+         := time.Now()
+        var fileContent string
+        for i := 0; i < postFilesRequestModel.Length; i++ {
+            fileContent = fileContent + "a"
+        }
+        duration := time.Since(start).Seconds()
+        postFilesResponseModel.Metrics.GenerateFile = int(duration * 1e6)
+        generateFile.Observe(duration)
 
-		start = time.Now()
-		encriptedFileContent, err := encrypt(fileContent, postFilesRequestModel.Key)
-		duration = time.Since(start).Seconds()
-		postFilesResponseModel.Metrics.Encryption = int(duration * 1e6)
-		encryption.Observe(duration)
-		if err != nil {
-			fmt.Println("Failed to encrypt data")
-			httpErrors.Inc()
-			fmt.Println(err.Error())
-			http.Error(w, "Failed to encrypt data: "+err.Error(), http.StatusBadRequest)
-			return
-		}
+        start = time.Now()
+        encriptedFileContent, err := encrypt(fileContent, postFilesRequestModel.Key)
+        duration = time.Since(start).Seconds()
+        postFilesResponseModel.Metrics.Encryption = int(duration * 1e6)
+        encryption.Observe(duration)
+        if err != nil {
+            fmt.Println("Failed to encrypt data")
+            httpErrors.Inc()
+            fmt.Println(err.Error())
+            http.Error(w, "Failed to encrypt data: "+err.Error(), http.StatusBadRequest)
+            return
+        }
 
-		start = time.Now()
-		err = os.WriteFile("store/"+postFilesRequestModel.FileName, []byte(encriptedFileContent), 0644)
-		duration = time.Since(start).Seconds()
-		postFilesResponseModel.Metrics.WriteFile = int(duration * 1e6)
-		writeFile.Observe(duration)
-		if err != nil {
-			fmt.Println("Failed to write to disk")
-			httpErrors.Inc()
-			fmt.Println(err.Error())
-			http.Error(w, "Failed to write to disk: "+err.Error(), http.StatusInternalServerError)
-			return
-		}
+        // Pega o ID do PC do ambiente
+        pcID := os.Getenv("PC_ID")
+        if pcID == "" {
+            pcID = "UNKNOWN"
+        }
 
-		filesCreated.Inc() // Incrementa o número de ficheiros criados
-		filesStored.Inc()  // Incrementa o número de ficheiros armazenados
+        // Cria o nome do arquivo com prefixo do PC
+        fileName := fmt.Sprintf("%s_%s", pcID, postFilesRequestModel.FileName)
 
-		w.WriteHeader(http.StatusCreated)
-		totalRequestDuration.Observe(time.Since(totalStart).Seconds())
-		json.NewEncoder(w).Encode(postFilesResponseModel)
+        start = time.Now()
+        // Salva localmente (na pasta store)
+        err = os.WriteFile("store/"+fileName, []byte(encriptedFileContent), 0644)
+        duration = time.Since(start).Seconds()
+        postFilesResponseModel.Metrics.WriteFile = int(duration * 1e6)
+        writeFile.Observe(duration)
+        if err != nil {
+            fmt.Println("Failed to write to disk")
+            httpErrors.Inc()
+            fmt.Println(err.Error())
+            http.Error(w, "Failed to write to disk: "+err.Error(), http.StatusInternalServerError)
+            return
+        }
 
-	default:
-		httpErrors.Inc()
-		http.Error(w, "405 Method Not Allowed", http.StatusMethodNotAllowed)
+        // Copia para o NAS (na pasta compartilhada)
+        err = os.WriteFile("nas_store/"+fileName, []byte(encriptedFileContent), 0644)
+        if err != nil {
+            fmt.Println("Failed to write to NAS")
+            // Não retornamos erro aqui porque o arquivo já foi salvo localmente
+        }
+
+        filesCreated.Inc()
+        filesStored.Inc()
+
+        w.WriteHeader(http.StatusCreated)
+        totalRequestDuration.Observe(time.Since(totalStart).Seconds())
+        json.NewEncoder(w).Encode(postFilesResponseModel)
+
+    default:
+        httpErrors.Inc()
+        http.Error(w, "405 Method Not Allowed", http.StatusMethodNotAllowed)
 	}
 }
 

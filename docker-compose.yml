@@ -29,8 +29,8 @@ services:
       - '/sys:/sys:ro'
       - '/var/lib/docker/:/var/lib/docker:ro'
       - '/dev/disk/:/dev/disk:ro'
-      - '/etc/machine-id:/etc/machine-id:ro'
-      - '/mnt/windows_docker/:/rootfs/var/lib/docker:ro'
+      #- '/etc/machine-id:/etc/machine-id:ro'
+      #- '/mnt/windows_docker/:/rootfs/var/lib/docker:ro'
     ports:
       - "8080:8080"
     devices:
@@ -38,8 +38,10 @@ services:
     command:  
       - --docker_only=true
       - --disable_root_cgroup_stats=true
-      - --disable_metrics=hugetlb
+      #- --disable_metrics=hugetlb
       - --housekeeping_interval=30s
+      - --allow_dynamic_housekeeping=true  # Permite ajuste dinâmico da coleta de métricas
+      - --storage_duration=1m              # Reduz o tempo de armazenamento em memória
     privileged: true
     depends_on:
       - pdfer
